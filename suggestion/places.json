@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Gulshan Park",
+    "latitude": 23.7925,
+    "longitude": 90.4074,
+    "category": "Park"
+  },
+  {
+    "name": "Bashundhara Shopping Mall",
+    "latitude": 23.7928,
+    "longitude": 90.4241,
+    "category": "Shopping"
+  },
+  {
+    "name": "Dhanmondi Lake",
+    "latitude": 23.7461,
+    "longitude": 90.379,
+    "category": "Lake"
+  },
+  {
+    "name": "Hatirjheel Lake",
+    "latitude": 23.7518,
+    "longitude": 90.4169,
+    "category": "Lake"
+  },
+  {
+    "name": "Jamuna Future Park",
+    "latitude": 23.7949,
+    "longitude": 90.4254,
+    "category": "Shopping Mall"
+  },
+  {
+    "name": "Bangladesh National Museum",
+    "latitude": 23.733,
+    "longitude": 90.3921,
+    "category": "Museum"
+  }
+]
