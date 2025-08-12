@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     // Call your backend chatbot API
     const chatbotResponse = await fetch(
-      "http://127.0.0.1:8000/api/chatbot/message/",
+      "https://suggestion-chatbot.onrender.com/api/chatbot/message/",
       {
         method: "POST",
         headers: {
