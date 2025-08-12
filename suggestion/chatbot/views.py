@@ -186,7 +186,6 @@ class ChatbotMessageAPIView(APIView):
                 "reply": reply_msg
             })
 
-        # 3. Distance-based visit (e.g., "within 5 km")
         # 3. Distance-based visit (e.g., "within 5 km" or "5km distance" or "distance 5 km")
         dist_match = re.search(r'(?:within\s*)?(\d+)\s*km|(\d+)\s*km\s*distance|distance\s*(\d+)\s*km', message)
         if dist_match:
