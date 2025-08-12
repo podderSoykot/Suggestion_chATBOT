@@ -149,7 +149,7 @@ class ChatbotMessageAPIView(APIView):
             return Response({"type": "time_based_places", "places": possible_places[:5], "reply": reply_msg})
         
         # 2.5 Check if user asks for nearest places
-        if any(word in message for word in ['nearest', 'nearby', 'closest']):
+        if any(word in message for word in ['nearest', 'nearby', 'closest', 'near me', 'nearby me', 'suggest', 'visit', 'visiting']):
             valid, result = self.validate_location(user_lat, user_lon)
             if not valid:
                 return result
@@ -185,7 +185,6 @@ class ChatbotMessageAPIView(APIView):
                 "places": places_data,
                 "reply": reply_msg
             })
-
         # 3. Distance-based visit (e.g., "within 5 km" or "5km distance" or "distance 5 km")
         dist_match = re.search(r'(?:within\s*)?(\d+)\s*km|(\d+)\s*km\s*distance|distance\s*(\d+)\s*km', message)
         if dist_match:
