@@ -47,10 +47,20 @@ class ChatbotMessageAPIView(APIView):
         }
     }
 
-    CATEGORIES = [
-        'park', 'museum', 'restaurant', 'shopping mall', 'shopping', 'lake', 'adventure', 
-        'relaxation', 'kids', 'family friendly', 'romantic', 'quiet', 'photography'
-    ]
+    CATEGORIES = {
+    "park": ["park", "gardens", "green area", "picnic spot", "playground"],
+    "museum": ["museum", "gallery", "exhibition", "art place", "history center"],
+    "restaurant": ["restaurant", "diner", "eatery", "cafe", "coffee shop", "bistro", "food place"],
+    "shopping": ["shopping mall", "mall", "marketplace", "bazaar", "shops", "stores", "shopping center"],
+    "lake": ["lake", "pond", "reservoir", "waterbody"],
+    "adventure": ["adventure park", "amusement park", "funfair", "waterpark", "theme park", "rides"],
+    "relaxation": ["relaxation", "spa", "wellness", "meditation", "yoga"],
+    "kids": ["kids", "children", "play area", "kid friendly"],
+    "family friendly": ["family friendly", "family trip", "family outing"],
+    "romantic": ["romantic", "date spot", "couples", "love spot"],
+    "quiet": ["quiet", "peaceful", "calm", "serene"],
+    "photography": ["photography", "photo spot", "instagrammable", "scenic view"]
+     }
 
     MOODS = {
         'romantic': 'romantic',
@@ -107,48 +117,76 @@ class ChatbotMessageAPIView(APIView):
         user_lon = request.data.get('longitude')
 
         if not message:
-            return Response({"type": "error", "reply": "Please send a message."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"type": "error", "reply": "Please send a message."},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. Check basic intents dynamically
+        # 1. Check basic intents
         intent, reply = self.find_intent(message)
         if intent:
             return Response({"type": intent, "reply": reply})
 
-        # 2. Time-based visit (e.g., "I have 5 hours")
+        # --- Detect filters first ---
+        hours = None
+        max_distance = None
+
         time_match = re.search(r'(\d+)\s*hour', message)
         if time_match:
             hours = int(time_match.group(1))
+
+        dist_match = re.search(r'(?:within\s*)?(\d+)\s*km|(\d+)\s*km\s*distance|distance\s*(\d+)\s*km', message)
+        if dist_match:
+            for group in dist_match.groups():
+                if group:
+                    max_distance = float(group)
+                    break
+
+        # If hours or distance filter exists, apply both together
+        if hours or max_distance:
             valid, result = self.validate_location(user_lat, user_lon)
             if not valid:
                 return result
             user_lat, user_lon = result
 
             places = Place.objects.all()
-            possible_places = []
+            filtered_places = []
             for place in places:
                 try:
-                    distance_km = haversine(user_lat, user_lon, place.latitude, place.longitude)
+                    dist_km = haversine(user_lat, user_lon, place.latitude, place.longitude)
                     duration = getattr(place, 'average_duration', 1)
-                    if duration <= hours:
-                        possible_places.append({
+
+                    if (hours is None or duration <= hours) and (max_distance is None or dist_km <= max_distance):
+                        filtered_places.append({
                             "name": place.name,
                             "category": place.category or "General",
-                            "distance_km": round(distance_km, 2),
+                            "distance_km": round(dist_km, 2),
                             "duration_hours": duration
                         })
                 except Exception:
                     continue
 
-            possible_places.sort(key=lambda x: x['distance_km'])
-            if not possible_places:
-                return Response({"type": "time_based_places", "places": [], "reply": "Sorry, no places found within your available time."})
+            filtered_places.sort(key=lambda x: x['distance_km'])
+            if not filtered_places:
+                filters_text = []
+                if hours:
+                    filters_text.append(f"{hours} hours")
+                if max_distance:
+                    filters_text.append(f"{max_distance} km")
+                return Response({"type": "multi_filter_places",
+                                "places": [],
+                                "reply": f"Sorry, no places found matching {', '.join(filters_text)}."})
 
-            reply_msg = f"Here are some places you can visit within {hours} hours:\n" + "\n".join(
-                [f"{i+1}. {p['name']} ({p['category']}) - approx {p['duration_hours']} hour(s)" for i, p in enumerate(possible_places[:5])]
-            ) + "\nEnjoy your trip! Let me know if you want recommendations for food, adventure, or relaxation."
-            return Response({"type": "time_based_places", "places": possible_places[:5], "reply": reply_msg})
-        
-        # 2.5 Check if user asks for nearest places
+            reply_parts = []
+            if hours:
+                reply_parts.append(f"within {hours} hours")
+            if max_distance:
+                reply_parts.append(f"within {max_distance} km")
+            reply_msg = f"Here are some places {', '.join(reply_parts)}:\n" + "\n".join(
+                [f"{i+1}. {p['name']} ({p['category']}) - {p['distance_km']} km, {p['duration_hours']} hour(s)"
+                for i, p in enumerate(filtered_places[:5])]
+            )
+            return Response({"type": "multi_filter_places", "places": filtered_places[:5], "reply": reply_msg})
+
+        # 2. Nearest places (if no hours/distance filter)
         if any(word in message for word in ['nearest', 'nearby', 'closest', 'near me', 'nearby me', 'suggest', 'visit', 'visiting']):
             valid, result = self.validate_location(user_lat, user_lon)
             if not valid:
@@ -171,7 +209,8 @@ class ChatbotMessageAPIView(APIView):
                 return Response({"type": "nearest_places", "places": [], "reply": "Sorry, I couldn't find any nearby places."})
 
             reply_msg = "Here are some nearest places you can visit:\n" + "\n".join(
-                [f"{i+1}. {place.name} ({place.category or 'General'}) - {round(dist, 2)} km away" for i, (dist, place) in enumerate(nearest)]
+                [f"{i+1}. {place.name} ({place.category or 'General'}) - {round(dist, 2)} km away"
+                for i, (dist, place) in enumerate(nearest)]
             )
 
             places_data = [{
@@ -185,47 +224,10 @@ class ChatbotMessageAPIView(APIView):
                 "places": places_data,
                 "reply": reply_msg
             })
-        # 3. Distance-based visit (e.g., "within 5 km" or "5km distance" or "distance 5 km")
-        dist_match = re.search(r'(?:within\s*)?(\d+)\s*km|(\d+)\s*km\s*distance|distance\s*(\d+)\s*km', message)
-        if dist_match:
-            max_distance = None
-            for group in dist_match.groups():
-                if group:
-                    max_distance = float(group)
-                    break
-            valid, result = self.validate_location(user_lat, user_lon)
-            if not valid:
-                return result
-            user_lat, user_lon = result
 
-            places = Place.objects.all()
-            nearby_places = []
-            for place in places:
-                try:
-                    dist_km = haversine(user_lat, user_lon, place.latitude, place.longitude)
-                    if dist_km <= max_distance:
-                        nearby_places.append({
-                            "name": place.name,
-                            "category": place.category or "General",
-                            "distance_km": round(dist_km, 2)
-                        })
-                except Exception:
-                    continue
-
-            nearby_places.sort(key=lambda x: x['distance_km'])
-            if not nearby_places:
-                return Response({"type": "distance_places", "places": [], "reply": f"Sorry, no places found within {max_distance} km."})
-
-            reply_msg = f"Here are places within {max_distance} km:\n" + "\n".join(
-                [f"{i+1}. {p['name']} ({p['category']}) - {p['distance_km']} km away" for i, p in enumerate(nearby_places[:5])]
-            )
-            return Response({"type": "distance_places", "places": nearby_places[:5], "reply": reply_msg})
-
-
-        # 4. Category / mood detection dynamic
-        # Check categories
-        for category in self.CATEGORIES:
-            if category in message:
+        # 3. Category detection with synonyms
+        for category, keywords in self.CATEGORIES.items():
+            if any(word in message for word in keywords):
                 valid, result = self.validate_location(user_lat, user_lon)
                 if not valid:
                     return result
@@ -235,10 +237,11 @@ class ChatbotMessageAPIView(APIView):
                     return Response({
                         "type": "category_places",
                         "places": [],
-                        "reply": f"Sorry, no {category} found near you."
+                        "reply": f"Sorry, no {category} places found near you."
                     })
-                reply_msg = f"Here are some {category} near you:\n" + "\n".join(
-                    [f"{i+1}. {p['name']} - {p['distance_km']} km away" for i, p in enumerate(matched_places[:5])]
+                reply_msg = f"Here are some {category} places near you:\n" + "\n".join(
+                    [f"{i+1}. {p['name']} - {p['distance_km']} km away"
+                    for i, p in enumerate(matched_places[:5])]
                 )
                 return Response({
                     "type": "category_places",
@@ -246,7 +249,7 @@ class ChatbotMessageAPIView(APIView):
                     "reply": reply_msg
                 })
 
-        # Check moods
+        # 4. Mood detection
         for mood_key, mood_category in self.MOODS.items():
             if mood_key in message:
                 valid, result = self.validate_location(user_lat, user_lon)
@@ -255,19 +258,11 @@ class ChatbotMessageAPIView(APIView):
                 user_lat, user_lon = result
                 mood_places = self.filter_places_by_category(user_lat, user_lon, mood_category)
                 if not mood_places:
-                    return Response({
-                        "type": "mood_places",
-                        "places": [],
-                        "reply": f"Sorry, no places found for {mood_key} mood near you."
-                    })
+                    return Response({"type": "mood_places", "places": [], "reply": f"Sorry, no places found for {mood_key} mood near you."})
                 reply_msg = f"Here are some places perfect for {mood_key}:\n" + "\n".join(
                     [f"{i+1}. {p['name']} - {p['distance_km']} km away" for i, p in enumerate(mood_places[:5])]
                 )
-                return Response({
-                    "type": "mood_places",
-                    "places": mood_places[:5],
-                    "reply": reply_msg
-                })
+                return Response({"type": "mood_places", "places": mood_places[:5], "reply": reply_msg})
 
         # 5. Open hours / travel mode placeholders
         if 'open now' in message or 'open at' in message or 'open today' in message:
@@ -275,7 +270,7 @@ class ChatbotMessageAPIView(APIView):
         if 'by car' in message or 'by bike' in message or 'by walk' in message or 'walking distance' in message:
             return Response({"type": "travel_mode", "reply": "Travel mode filtering will be available soon!"})
 
-        # 6. FAQ fuzzy matching
+        # 6. FAQ matching
         faqs = FAQ.objects.all()
         faq_questions = [faq.question.lower() for faq in faqs]
         matches = difflib.get_close_matches(message, faq_questions, n=1, cutoff=0.4)
@@ -299,6 +294,7 @@ class ChatbotMessageAPIView(APIView):
             "- Or ask FAQs about our places."
         )
         return Response({"type": "fallback", "reply": fallback_reply})
+
 
 class NearestPlacesAPIView(APIView):
     def post(self, request) -> Response:
