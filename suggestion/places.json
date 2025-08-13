@@ -34,5 +34,83 @@
     "latitude": 23.733,
     "longitude": 90.3921,
     "category": "Museum"
+  },
+  {
+    "name": "Ramna Park",
+    "latitude": 23.7386,
+    "longitude": 90.4072,
+    "category": "Park"
+  },
+  {
+    "name": "Hatirjheel Adventure Park",
+    "latitude": 23.752,
+    "longitude": 90.417,
+    "category": "Adventure"
+  },
+  {
+    "name": "Café Coffee Day, Gulshan",
+    "latitude": 23.7932,
+    "longitude": 90.4065,
+    "category": "Restaurant"
+  },
+  {
+    "name": "Starbucks, Banani",
+    "latitude": 23.7935,
+    "longitude": 90.4132,
+    "category": "Restaurant"
+  },
+  {
+    "name": "Baily Road Shopping Street",
+    "latitude": 23.7337,
+    "longitude": 90.4073,
+    "category": "Shopping"
+  },
+  {
+    "name": "Liberation War Museum",
+    "latitude": 23.7348,
+    "longitude": 90.3942,
+    "category": "Museum"
+  },
+  {
+    "name": "Vittoba Lake Park",
+    "latitude": 23.7455,
+    "longitude": 90.3841,
+    "category": "Lake"
+  },
+  {
+    "name": "Dhanmondi Kids Play Area",
+    "latitude": 23.7465,
+    "longitude": 90.3785,
+    "category": "Kids"
+  },
+  {
+    "name": "Romantic Garden, Gulshan",
+    "latitude": 23.7922,
+    "longitude": 90.4067,
+    "category": "Romantic"
+  },
+  {
+    "name": "Serene Meditation Center",
+    "latitude": 23.738,
+    "longitude": 90.405,
+    "category": "Relaxation"
+  },
+  {
+    "name": "Family Picnic Spot, Ramna",
+    "latitude": 23.7378,
+    "longitude": 90.407,
+    "category": "Family Friendly"
+  },
+  {
+    "name": "Scenic Photography Spot, Hatirjheel",
+    "latitude": 23.7515,
+    "longitude": 90.4165,
+    "category": "Photography"
+  },
+  {
+    "name": "Adventure Island Waterpark",
+    "latitude": 23.7951,
+    "longitude": 90.426,
+    "category": "Adventure"
   }
 ]
