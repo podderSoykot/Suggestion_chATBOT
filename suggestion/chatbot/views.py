@@ -585,7 +585,7 @@ class NearestPlacesAPIView(APIView):
         try:
             user_lat = request.data.get('latitude')
             user_lon = request.data.get('longitude')
-            limit = min(int(request.data.get('limit', 5)), 20)  # Max 20 places
+            limit = min(int(request.data.get('limit', 10)), 20)  # Max 20 places
             
             valid, result = LocationValidator.validate_location(user_lat, user_lon)
             if not valid:
